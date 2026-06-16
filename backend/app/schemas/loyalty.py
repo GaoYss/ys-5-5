@@ -22,6 +22,25 @@ class TierUpdate(BaseModel):
     active: bool | None = None
 
 
+class TierUpdateResult(BaseModel):
+    id: int
+    name: str
+    min_points: int
+    discount_percent: int
+    birthday_bonus: int
+    benefits: list[str]
+    sort_order: int
+    active: bool
+    migrations_triggered: int
+
+
+class TierDisablePreview(BaseModel):
+    tier_id: int
+    tier_name: str
+    affected_members: int
+    active_tiers_count: int
+
+
 class TierMigration(BaseModel):
     id: int
     member_id: int

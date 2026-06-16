@@ -14,6 +14,7 @@ export const loyaltyApi = {
   tiers: () => http.get('/tiers'),
   updateTier: (tierId, payload) => http.patch(`/tiers/${tierId}`, payload),
   moveTierOrder: (tierId, direction) => http.post(`/tiers/${tierId}/move?direction=${direction}`),
+  previewDisableTier: (tierId) => http.get(`/tiers/${tierId}/disable-preview`),
   vouchers: () => http.get('/vouchers'),
   issueBirthdayVouchers: () => http.post('/vouchers/birthday/issue', {})
 }

@@ -76,6 +76,9 @@ export function useLoyaltyData() {
       await refreshAll()
       return result
     },
+    async previewDisableTier(tierId) {
+      return await run(() => loyaltyApi.previewDisableTier(tierId))
+    },
     async moveTierOrder(tierId, direction) {
       await run(() => loyaltyApi.moveTierOrder(tierId, direction), '排序已调整')
       await refreshAll()

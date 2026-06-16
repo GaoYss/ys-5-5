@@ -127,6 +127,22 @@ class LoyaltyService:
             raise HTTPException(status_code=404, detail="等级不存在")
         return self._normalize_tier(tier)
 
+    def preview_disable_tier(self, tier_id: int) -> dict:
+        tier = self.get_tier_or_404(tier_id)
+        if not tier["active"]:
+            raise HTTPException(status_code=400, detail="该等级已是停用状态")
+        active_tiers = [t for t in self.repo.list_tiers() if t.get("active", 1)]
+        active_tiers_count = len(active_tiers)
+        if active_tiers_count <= 1:
+            raise HTTPException(status_code=400, detail="至少需要保留一个可用等级，无法停用最后一个可用等级")
+        affected_members = len(self.repo.list_members_in_tier(tier_id))
+        return {
+            "tier_id": tier_id,
+            "tier_name": tier["name"],
+            "affected_members": affected_members,
+            "active_tiers_count": active_tiers_count,
+        }
+
     def update_tier(self, tier_id: int, payload: dict) -> dict:
         self.get_tier_or_404(tier_id)
         fields: dict = {}
@@ -147,6 +163,10 @@ class LoyaltyService:
         if payload.get("active") is not None:
             before = self.repo.get_tier(tier_id)
             previous_active = bool(before["active"]) if before else None
+            if previous_active is True and not payload["active"]:
+                active_tiers = [t for t in self.repo.list_tiers() if t.get("active", 1)]
+                if len(active_tiers) <= 1:
+                    raise HTTPException(status_code=400, detail="至少需要保留一个可用等级，无法停用最后一个可用等级")
             fields["active"] = 1 if payload["active"] else 0
 
         updated = self.repo.update_tier(tier_id, fields)
@@ -157,12 +177,14 @@ class LoyaltyService:
         if payload.get("active") is not None and previous_active is True and payload["active"] is False:
             migs = self._migrate_members_from_tier(tier_id, reason="原等级已停用，按积分平滑迁移")
             migrations_count = len(migs)
-        elif payload.get("min_points") is not None:
-            migs = []
+        elif payload.get("min_points") is not None and previous_active is not False:
+            migrations_count = 0
             for member in self.repo.list_members_in_tier(tier_id):
                 member_norm = self._normalize_member(member)
-                self._refresh_member_tier(member_norm, reason=f"等级门槛调整（{payload['min_points']}积分）")
-            migrations_count = len(migs)
+                old_tier_id = member_norm["tier_id"]
+                refreshed = self._refresh_member_tier(member_norm, reason=f"等级门槛调整（{payload['min_points']}积分）")
+                if refreshed["tier_id"] != old_tier_id:
+                    migrations_count += 1
 
         result = self._normalize_tier(updated)
         result["migrations_triggered"] = migrations_count

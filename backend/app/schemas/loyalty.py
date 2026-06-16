@@ -8,6 +8,37 @@ class Tier(BaseModel):
     discount_percent: int
     birthday_bonus: int
     benefits: list[str]
+    sort_order: int
+    active: bool
+
+
+class TierUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=40)
+    min_points: int | None = Field(default=None, ge=0)
+    discount_percent: int | None = Field(default=None, ge=0, le=100)
+    birthday_bonus: int | None = Field(default=None, ge=0)
+    benefits: list[str] | None = None
+    sort_order: int | None = Field(default=None, ge=0)
+    active: bool | None = None
+
+
+class TierMigration(BaseModel):
+    id: int
+    member_id: int
+    from_tier_id: int | None = None
+    from_tier_name: str | None = None
+    from_tier_min_points: int | None = None
+    from_tier_discount_percent: int | None = None
+    from_tier_birthday_bonus: int | None = None
+    from_tier_benefits: list[str] | None = None
+    to_tier_id: int
+    to_tier_name: str
+    to_tier_min_points: int
+    to_tier_discount_percent: int
+    to_tier_birthday_bonus: int
+    to_tier_benefits: list[str]
+    reason: str
+    created_at: str
 
 
 class Member(BaseModel):
@@ -22,6 +53,21 @@ class Member(BaseModel):
     birthday_bonus: int
     benefits: list[str]
     created_at: str
+
+
+class MemberDetail(BaseModel):
+    id: int
+    name: str
+    phone: str
+    birthday: str
+    points: int
+    tier_id: int
+    tier_name: str
+    discount_percent: int
+    birthday_bonus: int
+    benefits: list[str]
+    created_at: str
+    tier_migrations: list[TierMigration]
 
 
 class MemberCreate(BaseModel):

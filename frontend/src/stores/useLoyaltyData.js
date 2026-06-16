@@ -70,6 +70,21 @@ export function useLoyaltyData() {
       const vouchers = await run(() => loyaltyApi.issueBirthdayVouchers(), '生日礼券发放完成')
       await refreshAll()
       return vouchers
+    },
+    async updateTier(tierId, payload) {
+      const result = await run(() => loyaltyApi.updateTier(tierId, payload), '等级已更新')
+      await refreshAll()
+      return result
+    },
+    async moveTierOrder(tierId, direction) {
+      await run(() => loyaltyApi.moveTierOrder(tierId, direction), '排序已调整')
+      await refreshAll()
+    },
+    async getMemberDetail(memberId) {
+      return await run(() => loyaltyApi.memberDetail(memberId))
+    },
+    async getMemberTierMigrations(memberId) {
+      return await run(() => loyaltyApi.memberTierMigrations(memberId))
     }
   }
 }

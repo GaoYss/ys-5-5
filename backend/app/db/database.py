@@ -13,7 +13,9 @@ CREATE TABLE IF NOT EXISTS tiers (
     min_points INTEGER NOT NULL,
     discount_percent INTEGER NOT NULL,
     birthday_bonus INTEGER NOT NULL,
-    benefits TEXT NOT NULL
+    benefits TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    active INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS point_rules (
@@ -65,16 +67,38 @@ CREATE TABLE IF NOT EXISTS vouchers (
     expires_at TEXT NOT NULL,
     FOREIGN KEY (member_id) REFERENCES members(id)
 );
+
+CREATE TABLE IF NOT EXISTS tier_migrations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    member_id INTEGER NOT NULL,
+    from_tier_id INTEGER,
+    from_tier_name TEXT,
+    from_tier_min_points INTEGER,
+    from_tier_discount_percent INTEGER,
+    from_tier_birthday_bonus INTEGER,
+    from_tier_benefits TEXT,
+    to_tier_id INTEGER NOT NULL,
+    to_tier_name TEXT NOT NULL,
+    to_tier_min_points INTEGER NOT NULL,
+    to_tier_discount_percent INTEGER NOT NULL,
+    to_tier_birthday_bonus INTEGER NOT NULL,
+    to_tier_benefits TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (member_id) REFERENCES members(id)
+);
 """
 
 
 SEED_SQL = """
-INSERT OR IGNORE INTO tiers (id, name, min_points, discount_percent, birthday_bonus, benefits)
+INSERT OR IGNORE INTO tiers (id, name, min_points, discount_percent, birthday_bonus, benefits, sort_order, active)
 VALUES
-    (1, '青铜会员', 0, 0, 20, '积分抵礼品;生日专属券'),
-    (2, '白银会员', 300, 5, 50, '95折饮品;生日加赠50积分;新品试饮'),
-    (3, '黄金会员', 800, 10, 100, '9折饮品;生日加赠100积分;新品优先兑换'),
-    (4, '黑金会员', 1600, 15, 200, '85折饮品;生日加赠200积分;每月专属礼');
+    (1, '青铜会员', 0, 0, 20, '积分抵礼品;生日专属券', 1, 1),
+    (2, '白银会员', 300, 5, 50, '95折饮品;生日加赠50积分;新品试饮', 2, 1),
+    (3, '黄金会员', 800, 10, 100, '9折饮品;生日加赠100积分;新品优先兑换', 3, 1),
+    (4, '黑金会员', 1600, 15, 200, '85折饮品;生日加赠200积分;每月专属礼', 4, 1);
+
+UPDATE tiers SET sort_order = id WHERE sort_order = 0;
 
 INSERT OR IGNORE INTO point_rules (id, name, description, amount_per_point, multiplier, active)
 VALUES
@@ -94,6 +118,12 @@ VALUES
     (1, '林晓茶', '13800000001', '1998-06-14', 860, 3),
     (2, '周芋圆', '13800000002', '1996-11-22', 260, 1),
     (3, '陈波波', '13800000003', '1994-02-08', 1680, 4);
+"""
+
+MIGRATION_SQL = """
+ALTER TABLE tiers ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE tiers ADD COLUMN active INTEGER NOT NULL DEFAULT 1;
+UPDATE tiers SET sort_order = id WHERE sort_order = 0;
 """
 
 
@@ -117,7 +147,21 @@ def get_connection() -> Iterator[sqlite3.Connection]:
         conn.close()
 
 
+def _column_exists(conn: sqlite3.Connection, table: str, column: str) -> bool:
+    rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    return any(row[1] == column for row in rows)
+
+
+def _run_migrations(conn: sqlite3.Connection) -> None:
+    if not _column_exists(conn, "tiers", "sort_order"):
+        conn.execute("ALTER TABLE tiers ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0")
+    if not _column_exists(conn, "tiers", "active"):
+        conn.execute("ALTER TABLE tiers ADD COLUMN active INTEGER NOT NULL DEFAULT 1")
+    conn.execute("UPDATE tiers SET sort_order = id WHERE sort_order = 0")
+
+
 def init_db() -> None:
     with get_connection() as conn:
         conn.executescript(SCHEMA)
+        _run_migrations(conn)
         conn.executescript(SEED_SQL)

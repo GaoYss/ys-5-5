@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.schemas.loyalty import Dashboard, Member, MemberCreate, Transaction
+from app.schemas.loyalty import Dashboard, Member, MemberCreate, MemberDetail, TierMigration, Transaction
 from app.services.loyalty_service import LoyaltyService
 
 router = APIRouter()
@@ -25,6 +25,16 @@ def dashboard() -> dict:
 @router.get("/{member_id}", response_model=Member)
 def get_member(member_id: int) -> dict:
     return service.get_member_or_404(member_id)
+
+
+@router.get("/{member_id}/detail", response_model=MemberDetail)
+def get_member_detail(member_id: int) -> dict:
+    return service.get_member_detail(member_id)
+
+
+@router.get("/{member_id}/tier-migrations", response_model=list[TierMigration])
+def list_member_tier_migrations(member_id: int) -> list[dict]:
+    return service.list_tier_migrations(member_id)
 
 
 @router.get("/{member_id}/transactions", response_model=list[Transaction])
